@@ -1,40 +1,59 @@
-import express from 'express'
-import path from 'path'
-import { fileURLToPath } from 'url'
+// src/index.ts
+import express from "express";
+import path from "path";
+import { fileURLToPath } from "url";
 import { config } from "dotenv";
-import { Network, paymentMiddleware, Resource, type SolanaAddress } from "x402-express";
+import { paymentMiddleware } from "x402-express";
 import { coinbase } from "facilitators";
-import { z } from "zod";
-import { inputSchemaToX402, zodToJsonSchema } from "./lib/schema";
+import { z as z2 } from "zod";
+
+// src/lib/schema.ts
+import * as z from "zod";
+function inputSchemaToX402(inputSchema2) {
+  const jsonSchema = z.toJSONSchema(inputSchema2);
+  const queryParams = {};
+  if (jsonSchema.properties) {
+    for (const [key, value] of Object.entries(jsonSchema.properties)) {
+      if (typeof value === "object" && value !== null) {
+        const prop = value;
+        const type = prop.type || "string";
+        const description = prop.description || "";
+        queryParams[key] = description || `${type} parameter`;
+      }
+    }
+  }
+  return {
+    type: "http",
+    method: "GET",
+    queryParams
+  };
+}
+function zodToJsonSchema(schema) {
+  return z.toJSONSchema(schema);
+}
+
+// src/index.ts
 config();
-
-const facilitatorUrl = process.env.FACILITATOR_URL as Resource;
-const payTo = process.env.ADDRESS as `0x${string}` | SolanaAddress;
-const network = process.env.NETWORK as Network;
-
+var facilitatorUrl = process.env.FACILITATOR_URL;
+var payTo = process.env.ADDRESS;
+var network = process.env.NETWORK;
 if (!payTo || !network || !facilitatorUrl) {
   console.error("Missing required environment variables");
   process.exit(1);
 }
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-
-const inputSchema = z.object({
-  fen: z.string(),
-  depth: z.number().optional().default(10),
+var __filename = fileURLToPath(import.meta.url);
+var __dirname = path.dirname(__filename);
+var inputSchema = z2.object({
+  fen: z2.string(),
+  depth: z2.number().optional().default(10)
 });
-
-// Validate the response data with zod
-const responseSchema = z.object({
-  success: z.literal(true),
-  evaluation: z.number(),
-  bestmove: z.string(),
-  mate: z.number().nullable(),
+var responseSchema = z2.object({
+  success: z2.literal(true),
+  evaluation: z2.number(),
+  bestmove: z2.string(),
+  mate: z2.number().nullable()
 });
-
-const app = express()
-
+var app = express();
 app.use(
   paymentMiddleware(
     payTo,
@@ -43,32 +62,29 @@ app.use(
         price: "$0.001",
         network,
         config: {
-          discoverable: true, // make your endpoint discoverable
+          discoverable: true,
+          // make your endpoint discoverable
           description: "Get stockfish analysis for a given FEN",
-          inputSchema: inputSchemaToX402(inputSchema),  
-          outputSchema: zodToJsonSchema(responseSchema),
+          inputSchema: inputSchemaToX402(inputSchema),
+          outputSchema: zodToJsonSchema(responseSchema)
         }
-      },
+      }
     },
-    coinbase,
-  ),
+    coinbase
+  )
 );
-
 app.get("/weather", (req, res) => {
   res.send({
     report: {
       weather: "sunny",
-      temperature: 70,
-    },
+      temperature: 70
+    }
   });
 });
-
-async function getBestMove(fen: string, depth: number) {
+async function getBestMove(fen, depth) {
   const url = `https://stockfish.online/api/s/v2.php?fen=${encodeURIComponent(fen)}&depth=${depth}`;
   console.log(`[/best-move] Fetching: ${url}`);
-  
   const response = await fetch(url);
-  
   if (!response.ok) {
     console.error(`[/best-move] API Error - Status: ${response.status} ${response.statusText}`);
     return {
@@ -76,16 +92,12 @@ async function getBestMove(fen: string, depth: number) {
       error: `Stockfish API returned ${response.status}: ${response.statusText}`
     };
   }
-
   const data = await response.json();
   console.log(`[/best-move] Raw API Response:`, JSON.stringify(data, null, 2));
-  
   const validatedData = responseSchema.parse(data);
   console.log(`[/best-move] Validation successful`);
-  
   return validatedData;
 }
-
 app.get("/best-move", async (req, res) => {
   const { success, data } = inputSchema.safeParse(req.query);
   if (!success) {
@@ -95,18 +107,15 @@ app.get("/best-move", async (req, res) => {
   const response = await getBestMove(fen, depth);
   res.send(response);
 });
-
 app.get("/premium/content", (req, res) => {
   res.send({
-    content: "This is premium content",
+    content: "This is premium content"
   });
 });
-
-// Home route - HTML
-app.get('/', (req, res) => {
+app.get("/", (req, res) => {
   const protocol = req.protocol;
-  const host = req.get('host');
-  res.type('html').send(`
+  const host = req.get("host");
+  res.type("html").send(`
  <!DOCTYPE html>
     <html lang="en">
       <head>
@@ -152,10 +161,10 @@ app.get('/', (req, res) => {
         </style>
       </head>
       <body>
-        <h1>♟️ Chess Best Move x402 API</h1>
+        <h1>\u265F\uFE0F Chess Best Move x402 API</h1>
         <div class="status">
-          <p><strong>Status:</strong> healthy ✓</p>
-          <p><strong>Timestamp:</strong> ${new Date().toISOString()}</p>
+          <p><strong>Status:</strong> healthy \u2713</p>
+          <p><strong>Timestamp:</strong> ${(/* @__PURE__ */ new Date()).toISOString()}</p>
           <p><strong>Uptime:</strong> ${Math.floor(process.uptime())}s</p>
           <p><strong>Version:</strong> ${process.version}</p>
         </div>
@@ -189,26 +198,19 @@ app.get('/', (req, res) => {
         </p>
       </body>
     </html>
-  `)
-})
-
-// Serve static files from public directory
-app.use('/favicon.ico', express.static(path.join(__dirname, 'public', 'favicon.ico')));
-app.use('/og-image.png', express.static(path.join(__dirname, 'public', 'og-image.png')));
-
-// Example API endpoint - JSON
-app.get('/api-data', (req, res) => {
+  `);
+});
+app.use("/favicon.ico", express.static(path.join(__dirname, "public", "favicon.ico")));
+app.use("/og-image.png", express.static(path.join(__dirname, "public", "og-image.png")));
+app.get("/api-data", (req, res) => {
   res.json({
-    message: 'Here is some sample API data',
-    items: ['apple', 'banana', 'cherry'],
-  })
-})
-
-// Health check
-app.get('/healthz', (req, res) => {
-  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() })
-})
-
+    message: "Here is some sample API data",
+    items: ["apple", "banana", "cherry"]
+  });
+});
+app.get("/healthz", (req, res) => {
+  res.status(200).json({ status: "ok", timestamp: (/* @__PURE__ */ new Date()).toISOString() });
+});
 app.listen(4021, () => {
   console.log(`Server listening at http://localhost:4021`);
 });
