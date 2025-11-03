@@ -48,7 +48,9 @@ app.use(
         config: {
           discoverable: true, // make your endpoint discoverable
           description: "Get stockfish analysis for a given FEN",
-          inputSchema: inputSchemaToX402(inputSchema),  
+          inputSchema: {
+            queryParams: { fen: "string, required", depth: "number, (1-12), optional, default 10" }
+          },  
           outputSchema: zodToJsonSchema(responseSchema),
         }
       },
@@ -58,6 +60,11 @@ app.use(
     }
   ),
 );
+
+// Serve static files from public directory
+// __dirname points to dist/, so we need to go up one level to reach the project root
+const publicDir = path.join(__dirname, '..', 'public');
+app.use(express.static(publicDir));
 
 app.get("/weather", (req, res) => {
   res.send({
@@ -196,10 +203,6 @@ app.get('/', (req, res) => {
     </html>
   `)
 })
-
-// Serve static files from public directory
-app.use('/favicon.ico', express.static(path.join(__dirname, 'public', 'favicon.ico')));
-app.use('/og-image.png', express.static(path.join(__dirname, 'public', 'og-image.png')));
 
 // Example API endpoint - JSON
 app.get('/api-data', (req, res) => {
