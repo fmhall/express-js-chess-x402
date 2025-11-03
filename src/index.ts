@@ -6,6 +6,7 @@ import { Network, paymentMiddleware, Resource, type SolanaAddress } from "x402-e
 // import { coinbase } from "facilitators";
 import { z } from "zod";
 import { inputSchemaToX402, zodToJsonSchema } from "./lib/schema";
+import type { HTTPRequestStructure } from "x402/types";
 config();
 
 const facilitatorUrl = process.env.FACILITATOR_URL as Resource;
@@ -49,8 +50,10 @@ app.use(
           discoverable: true, // make your endpoint discoverable
           description: "Get stockfish analysis for a given FEN",
           inputSchema: {
+            method: "GET",
+            type: "http",
             queryParams: { fen: "string, required", depth: "number, (1-12), optional, default 10" }
-          },  
+          } as HTTPRequestStructure,  
           outputSchema: zodToJsonSchema(responseSchema),
         }
       },
