@@ -3,7 +3,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import { config } from "dotenv";
 import { Network, paymentMiddleware, Resource, type SolanaAddress } from "x402-express";
-import { coinbase } from "facilitators";
+// import { coinbase } from "facilitators";
 import { z } from "zod";
 import { inputSchemaToX402, zodToJsonSchema } from "./lib/schema";
 config();
@@ -50,7 +50,9 @@ app.use(
         }
       },
     },
-    coinbase,
+    {
+      url: facilitatorUrl,
+    }
   ),
 );
 
