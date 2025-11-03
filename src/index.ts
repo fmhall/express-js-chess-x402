@@ -43,7 +43,7 @@ app.use(
   paymentMiddleware(
     payTo,
     {
-      "/best-move": {
+      "GET /best-move": {
         price: "$0.001",
         network,
         config: {
