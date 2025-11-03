@@ -7,9 +7,7 @@
   "author": "",
   "license": "ISC",
   "scripts": {
-    "build": "tsup",
-    "dev": "tsx src/index.ts",
-    "start": "node dist/index.js"
+    "dev": "tsx src/index.ts"
   },
   "dependencies": {
     "dotenv": "^17.2.3",
