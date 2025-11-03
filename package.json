@@ -6,11 +6,24 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js"
+  },
   "dependencies": {
-    "@types/express": "^5.0.0",
-    "express": "^4.18.2"
+    "dotenv": "^17.2.3",
+    "express": "^4.18.2",
+    "facilitators": "^0.0.7",
+    "x402": "^0.7.1",
+    "x402-express": "^0.7.1",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0"
+    "@types/express": "^5.0.3",
+    "@types/node": "^22.0.0",
+    "tsup": "^8.5.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
   }
 }
