@@ -22,7 +22,7 @@ const __dirname = path.dirname(__filename)
 
 const inputSchema = z.object({
   fen: z.string(),
-  depth: z.number().optional().default(10),
+  depth: z.string().transform(Number).pipe(z.number()).optional().default(10),
 });
 
 // Validate the response data with zod
@@ -32,6 +32,9 @@ const responseSchema = z.object({
   bestmove: z.string(),
   mate: z.number().nullable(),
 });
+
+console.log(inputSchemaToX402(inputSchema));
+console.log(zodToJsonSchema(responseSchema));
 
 const app = express()
 
@@ -91,7 +94,7 @@ async function getBestMove(fen: string, depth: number) {
 app.get("/best-move", async (req, res) => {
   const { success, data } = inputSchema.safeParse(req.query);
   if (!success) {
-    return res.status(400).json({ error: "Invalid request parameters" });
+    return res.status(400).json({ error: "Invalid request parameters, " + JSON.stringify(req.query) });
   }
   const { fen, depth } = data;
   const response = await getBestMove(fen, depth);

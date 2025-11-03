@@ -15,8 +15,8 @@ export function inputSchemaToX402(inputSchema: z.ZodObject<z.ZodRawShape>): HTTP
         const prop = value as any;
         // Create a simple string description from the schema
         const type = prop.type || 'string';
-        const description = prop.description || '';
-        queryParams[key] = description || `${type} parameter`;
+        const description = prop.description || `${type} parameter`;
+        queryParams[key] = description;
       }
     }
   }
