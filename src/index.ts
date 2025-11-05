@@ -83,6 +83,8 @@ console.log(zodToJsonSchema(responseSchema));
 
 const app = express();
 
+
+// Testing various schemas
 app.use(
   paymentMiddleware(
     payTo,
