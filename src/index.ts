@@ -8,14 +8,13 @@ import {
   Resource,
   type SolanaAddress,
 } from "x402-express";
-// import { coinbase } from "facilitators";
+import { facilitator } from "@coinbase/x402";
 import { z } from "zod";
 import {
   inputSchemaToX402GET,
   inputSchemaToX402POST,
   zodToJsonSchema,
 } from "./lib/schema";
-import type { PaymentMiddlewareConfig } from "x402/types";
 
 config();
 
@@ -33,7 +32,12 @@ const __dirname = path.dirname(__filename);
 
 const inputSchema = z.object({
   fen: z.string().describe("FEN of the current chess position"),
-  depth: z.string().min(1).max(2).default("10").describe("depth (1-12), optional, default 10"),
+  depth: z
+    .string()
+    .min(1)
+    .max(2)
+    .default("10")
+    .describe("depth (1-12), optional, default 10"),
 });
 
 // --- Shared primitives
@@ -77,7 +81,6 @@ console.log(zodToJsonSchema(responseSchema));
 
 const app = express();
 
-
 // Testing various schemas
 app.use(
   paymentMiddleware(
@@ -94,9 +97,7 @@ app.use(
         },
       },
     },
-    {
-      url: facilitatorUrl,
-    },
+    facilitator,
   ),
 );
 
@@ -125,11 +126,16 @@ async function getBestMove(fen: string, depth: number) {
       console.error(
         `[/best-move] API Error - Status: ${response.status} ${response.statusText}`,
       );
-      throw new Error(`Stockfish API returned ${response.status}: ${response.statusText}`);
+      throw new Error(
+        `Stockfish API returned ${response.status}: ${response.statusText}`,
+      );
     }
 
     const data = await response.json();
-    console.log(`[/best-move] Raw API Response:`, JSON.stringify(data, null, 2));
+    console.log(
+      `[/best-move] Raw API Response:`,
+      JSON.stringify(data, null, 2),
+    );
 
     const validatedData = responseSchema.parse(data);
     console.log(`[/best-move] Validation successful`);
@@ -157,7 +163,11 @@ app.get("/best-move", async (req, res) => {
       });
     }
     const response = await getBestMove(fen, depthNumber);
-    return res.json(response);
+    if (!res.headersSent) {
+      return res.json(response);
+    } else {
+      console.warn("[/best-move] Headers already sent, skipping response");
+    }
   } catch (error) {
     console.error("[/best-move] Error:", error);
     if (!res.headersSent) {
