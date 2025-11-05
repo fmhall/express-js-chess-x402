@@ -33,12 +33,7 @@ const __dirname = path.dirname(__filename);
 
 const inputSchema = z.object({
   fen: z.string().describe("FEN of the current chess position"),
-  depth: z.string()
-    .transform(Number)
-    .pipe(z.number())
-    .optional()
-    .default(10)
-    .describe("depth (1-12), optional, default 10"),
+  depth: z.string().min(1).max(2).default("10").describe("depth (1-12), optional, default 10"),
 });
 
 // --- Shared primitives
@@ -155,7 +150,13 @@ app.get("/best-move", async (req, res) => {
       });
     }
     const { fen, depth } = data;
-    const response = await getBestMove(fen, depth);
+    const depthNumber = parseInt(depth);
+    if (isNaN(depthNumber) || depthNumber < 1 || depthNumber > 12) {
+      return res.status(400).json({
+        error: "Invalid depth, must be a number between 1 and 12, got " + depth,
+      });
+    }
+    const response = await getBestMove(fen, depthNumber);
     return res.json(response);
   } catch (error) {
     console.error("[/best-move] Error:", error);
