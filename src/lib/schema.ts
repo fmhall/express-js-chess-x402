@@ -1,22 +1,25 @@
 import * as z from "zod";
 import type { HTTPRequestStructure } from "x402/types";
+import e from "express";
 
-export function inputSchemaToX402(inputSchema: z.ZodObject<z.ZodRawShape>): HTTPRequestStructure {
+export function inputSchemaToX402GET(
+  inputSchema: z.ZodObject<z.ZodRawShape>,
+): Record<string, any> {
   const jsonSchema = z.toJSONSchema(inputSchema);
 
   // Convert JSON Schema properties to Record<string, string> for x402
   // x402 expects simple string descriptions, not full JSON schema objects
-  const queryParams: Record<string, string> = {};
+  const queryParams: Record<string, any> = {};
 
   if (jsonSchema.properties) {
     for (const [key, value] of Object.entries(jsonSchema.properties)) {
-      // Convert each property to a string description
-      if (typeof value === 'object' && value !== null) {
-        const prop = value as any;
-        // Create a simple string description from the schema
-        const type = prop.type || 'string';
-        const description = prop.description || `${type} parameter`;
-        queryParams[key] = description;
+      if (typeof value === "object" && value !== null) {
+        queryParams[key] = value;
+        if (!("default" in value && value.default !== undefined)) {
+          queryParams[key].required = true;
+        } else {
+          queryParams[key].required = false;
+        }
       }
     }
   }
@@ -25,6 +28,19 @@ export function inputSchemaToX402(inputSchema: z.ZodObject<z.ZodRawShape>): HTTP
     type: "http" as const,
     method: "GET" as const,
     queryParams,
+  };
+}
+
+export function inputSchemaToX402POST(
+  inputSchema: z.ZodObject<z.ZodRawShape>,
+): HTTPRequestStructure {
+  const jsonSchema = z.toJSONSchema(inputSchema);
+
+  return {
+    type: "http" as const,
+    method: "POST" as const,
+    bodyType: "json" as const,
+    bodyFields: jsonSchema.properties,
   };
 }
 

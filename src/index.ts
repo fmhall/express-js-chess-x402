@@ -1,12 +1,22 @@
-import express from 'express'
-import path from 'path'
-import { fileURLToPath } from 'url'
+import express from "express";
+import path from "path";
+import { fileURLToPath } from "url";
 import { config } from "dotenv";
-import { Network, paymentMiddleware, Resource, type SolanaAddress } from "x402-express";
+import {
+  Network,
+  paymentMiddleware,
+  Resource,
+  type SolanaAddress,
+} from "x402-express";
 // import { coinbase } from "facilitators";
 import { z } from "zod";
-import { inputSchemaToX402, zodToJsonSchema } from "./lib/schema";
-import type { HTTPRequestStructure } from "x402/types";
+import {
+  inputSchemaToX402GET,
+  inputSchemaToX402POST,
+  zodToJsonSchema,
+} from "./lib/schema";
+import type { PaymentMiddlewareConfig } from "x402/types";
+
 config();
 
 const facilitatorUrl = process.env.FACILITATOR_URL as Resource;
@@ -18,12 +28,43 @@ if (!payTo || !network || !facilitatorUrl) {
   process.exit(1);
 }
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const inputSchema = z.object({
-  fen: z.string(),
-  depth: z.string().transform(Number).pipe(z.number()).optional().default(10),
+  fen: z.string().describe("FEN of the current chess position"),
+  depth: z
+    .number()
+    .min(1)
+    .max(12)
+    .optional()
+    .default(10)
+    .describe("depth (1-12), optional, default 10"),
+});
+
+// --- Shared primitives
+const CountryISO2 = z
+  .string()
+  .regex(/^[A-Z]{2}$/, "Use ISO-3166-1 alpha-2 (e.g. US, BE)");
+
+export const AddressTo = z.object({
+  first_name: z.string().min(1),
+  last_name: z.string().min(1),
+  email: z.email(),
+  phone: z.string().min(3).max(32).optional().or(z.literal("")).optional(), // Printify tolerates many formats
+  country: CountryISO2,
+  region: z.string().optional().default(""),
+  address1: z.string().min(1),
+  address2: z.string().optional().default(""),
+  city: z.string().min(1),
+  zip: z.string().min(1),
+});
+
+export const CreateShirtBody = z.object({
+  prompt: z.string().min(10, "Prompt too short").max(4000, "Prompt too long"),
+  size: z.enum(["S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"]).default("XL"),
+  color: z.enum(["Black", "White"]).default("White"),
+  address_to: AddressTo,
 });
 
 // Validate the response data with zod
@@ -34,10 +75,13 @@ const responseSchema = z.object({
   mate: z.number().nullable(),
 });
 
-console.log(inputSchemaToX402(inputSchema));
+console.log(inputSchemaToX402GET(CreateShirtBody));
+console.log(inputSchemaToX402POST(CreateShirtBody));
+console.log(inputSchemaToX402POST(inputSchema));
+console.log(inputSchemaToX402GET(inputSchema));
 console.log(zodToJsonSchema(responseSchema));
 
-const app = express()
+const app = express();
 
 app.use(
   paymentMiddleware(
@@ -52,21 +96,21 @@ app.use(
           inputSchema: {
             method: "GET",
             type: "http",
-            queryParams: { fen: "string, required", depth: "number, (1-12), optional, default 10" }
-          } as HTTPRequestStructure,  
-          outputSchema: zodToJsonSchema(responseSchema),
-        }
+            queryParams: inputSchemaToX402GET(inputSchema),
+            outputSchema: zodToJsonSchema(responseSchema),
+          } as any,
+        },
       },
     },
     {
       url: facilitatorUrl,
-    }
+    },
   ),
 );
 
 // Serve static files from public directory
 // __dirname points to dist/, so we need to go up one level to reach the project root
-const publicDir = path.join(__dirname, '..', 'public');
+const publicDir = path.join(__dirname, "..", "public");
 app.use(express.static(publicDir));
 
 app.get("/weather", (req, res) => {
@@ -81,30 +125,34 @@ app.get("/weather", (req, res) => {
 async function getBestMove(fen: string, depth: number) {
   const url = `https://stockfish.online/api/s/v2.php?fen=${encodeURIComponent(fen)}&depth=${depth}`;
   console.log(`[/best-move] Fetching: ${url}`);
-  
+
   const response = await fetch(url);
-  
+
   if (!response.ok) {
-    console.error(`[/best-move] API Error - Status: ${response.status} ${response.statusText}`);
+    console.error(
+      `[/best-move] API Error - Status: ${response.status} ${response.statusText}`,
+    );
     return {
       success: false,
-      error: `Stockfish API returned ${response.status}: ${response.statusText}`
+      error: `Stockfish API returned ${response.status}: ${response.statusText}`,
     };
   }
 
   const data = await response.json();
   console.log(`[/best-move] Raw API Response:`, JSON.stringify(data, null, 2));
-  
+
   const validatedData = responseSchema.parse(data);
   console.log(`[/best-move] Validation successful`);
-  
+
   return validatedData;
 }
 
 app.get("/best-move", async (req, res) => {
   const { success, data } = inputSchema.safeParse(req.query);
   if (!success) {
-    return res.status(400).json({ error: "Invalid request parameters, " + JSON.stringify(req.query) });
+    return res.status(400).json({
+      error: "Invalid request parameters, " + JSON.stringify(req.query),
+    });
   }
   const { fen, depth } = data;
   const response = await getBestMove(fen, depth);
@@ -118,10 +166,10 @@ app.get("/premium/content", (req, res) => {
 });
 
 // Home route - HTML
-app.get('/', (req, res) => {
+app.get("/", (req, res) => {
   const protocol = req.protocol;
-  const host = req.get('host');
-  res.type('html').send(`
+  const host = req.get("host");
+  res.type("html").send(`
  <!DOCTYPE html>
     <html lang="en">
       <head>
@@ -204,21 +252,21 @@ app.get('/', (req, res) => {
         </p>
       </body>
     </html>
-  `)
-})
+  `);
+});
 
 // Example API endpoint - JSON
-app.get('/api-data', (req, res) => {
+app.get("/api-data", (req, res) => {
   res.json({
-    message: 'Here is some sample API data',
-    items: ['apple', 'banana', 'cherry'],
-  })
-})
+    message: "Here is some sample API data",
+    items: ["apple", "banana", "cherry"],
+  });
+});
 
 // Health check
-app.get('/healthz', (req, res) => {
-  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() })
-})
+app.get("/healthz", (req, res) => {
+  res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+});
 
 app.listen(4021, () => {
   console.log(`Server listening at http://localhost:4021`);
