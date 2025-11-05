@@ -33,10 +33,9 @@ const __dirname = path.dirname(__filename);
 
 const inputSchema = z.object({
   fen: z.string().describe("FEN of the current chess position"),
-  depth: z
-    .number()
-    .min(1)
-    .max(12)
+  depth: z.string()
+    .transform(Number)
+    .pipe(z.number())
     .optional()
     .default(10)
     .describe("depth (1-12), optional, default 10"),
