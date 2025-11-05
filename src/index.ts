@@ -67,7 +67,7 @@ export const CreateShirtBody = z.object({
 
 // Validate the response data with zod
 const responseSchema = z.object({
-  success: z.literal(true),
+  success: z.boolean(),
   evaluation: z.number(),
   bestmove: z.string(),
   mate: z.number().nullable(),
@@ -92,8 +92,10 @@ app.use(
         config: {
           discoverable: true, // make your endpoint discoverable
           description: "Get stockfish analysis for a given FEN",
-          inputSchema: inputSchemaToX402GET(inputSchema),
-          outputSchema: zodToJsonSchema(responseSchema),
+          inputSchema: {
+            queryParams: z.toJSONSchema(inputSchema) as any,
+          },
+          outputSchema: z.toJSONSchema(responseSchema),
         },
       },
     },
