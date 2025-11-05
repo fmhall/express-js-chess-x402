@@ -94,11 +94,9 @@ app.use(
           discoverable: true, // make your endpoint discoverable
           description: "Get stockfish analysis for a given FEN",
           inputSchema: {
-            method: "GET",
-            type: "http",
             queryParams: inputSchemaToX402GET(inputSchema),
-            outputSchema: zodToJsonSchema(responseSchema),
-          } as any,
+          },
+          outputSchema: zodToJsonSchema(responseSchema),
         },
       },
     },
