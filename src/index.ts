@@ -123,37 +123,49 @@ async function getBestMove(fen: string, depth: number) {
   const url = `https://stockfish.online/api/s/v2.php?fen=${encodeURIComponent(fen)}&depth=${depth}`;
   console.log(`[/best-move] Fetching: ${url}`);
 
-  const response = await fetch(url);
+  try {
+    const response = await fetch(url);
 
-  if (!response.ok) {
-    console.error(
-      `[/best-move] API Error - Status: ${response.status} ${response.statusText}`,
-    );
-    return {
-      success: false,
-      error: `Stockfish API returned ${response.status}: ${response.statusText}`,
-    };
+    if (!response.ok) {
+      console.error(
+        `[/best-move] API Error - Status: ${response.status} ${response.statusText}`,
+      );
+      throw new Error(`Stockfish API returned ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.log(`[/best-move] Raw API Response:`, JSON.stringify(data, null, 2));
+
+    const validatedData = responseSchema.parse(data);
+    console.log(`[/best-move] Validation successful`);
+
+    return validatedData;
+  } catch (error) {
+    console.error(`[/best-move] Error in getBestMove:`, error);
+    throw error;
   }
-
-  const data = await response.json();
-  console.log(`[/best-move] Raw API Response:`, JSON.stringify(data, null, 2));
-
-  const validatedData = responseSchema.parse(data);
-  console.log(`[/best-move] Validation successful`);
-
-  return validatedData;
 }
 
 app.get("/best-move", async (req, res) => {
-  const { success, data } = inputSchema.safeParse(req.query);
-  if (!success) {
-    return res.status(400).json({
-      error: "Invalid request parameters, " + JSON.stringify(req.query),
-    });
+  try {
+    const { success, data } = inputSchema.safeParse(req.query);
+    if (!success) {
+      return res.status(400).json({
+        error: "Invalid request parameters, " + JSON.stringify(req.query),
+      });
+    }
+    const { fen, depth } = data;
+    const response = await getBestMove(fen, depth);
+    return res.json(response);
+  } catch (error) {
+    console.error("[/best-move] Error:", error);
+    if (!res.headersSent) {
+      return res.status(500).json({
+        error: "Internal server error",
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
   }
-  const { fen, depth } = data;
-  const response = await getBestMove(fen, depth);
-  res.send(response);
 });
 
 app.get("/premium/content", (req, res) => {
