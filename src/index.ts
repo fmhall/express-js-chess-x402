@@ -1,4 +1,4 @@
-import express from "express";
+import express, { response } from "express";
 import path from "path";
 import { fileURLToPath } from "url";
 import { config } from "dotenv";
@@ -98,6 +98,16 @@ app.use(
           outputSchema: z.toJSONSchema(responseSchema),
         },
       },
+      "POST /best-move": {
+        price: "$0.001",
+        network,
+        config: {
+          discoverable: true,
+          description: "Get stockfish analysis for a given FEN",
+          inputSchema: {type: "http", method: "POST", bodyType: "json", bodyFields: z.toJSONSchema(inputSchema) as any} as any,
+          outputSchema: z.toJSONSchema(responseSchema),
+        },
+      },
     },
     facilitator,
   ),
@@ -155,6 +165,38 @@ app.get("/best-move", async (req, res) => {
     if (!success) {
       return res.status(400).json({
         error: "Invalid request parameters, " + JSON.stringify(req.query),
+      });
+    }
+    const { fen, depth } = data;
+    const depthNumber = parseInt(depth);
+    if (isNaN(depthNumber) || depthNumber < 1 || depthNumber > 12) {
+      return res.status(400).json({
+        error: "Invalid depth, must be a number between 1 and 12, got " + depth,
+      });
+    }
+    const response = await getBestMove(fen, depthNumber);
+    if (!res.headersSent) {
+      return res.json(response);
+    } else {
+      console.warn("[/best-move] Headers already sent, skipping response");
+    }
+  } catch (error) {
+    console.error("[/best-move] Error:", error);
+    if (!res.headersSent) {
+      return res.status(500).json({
+        error: "Internal server error",
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+});
+
+app.post("/best-move", async (req, res) => {
+  try {
+    const { success, data } = inputSchema.safeParse(req.body);
+    if (!success) {
+      return res.status(400).json({
+        error: "Invalid request parameters, " + JSON.stringify(req.body),
       });
     }
     const { fen, depth } = data;

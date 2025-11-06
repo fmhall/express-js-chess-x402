@@ -5,7 +5,7 @@ import e from "express";
 export function inputSchemaToX402GET(
   inputSchema: z.ZodObject<z.ZodRawShape>,
 ): Record<string, any> {
-  const jsonSchema = z.toJSONSchema(inputSchema, {target: "openapi-3.0"});
+  const jsonSchema = z.toJSONSchema(inputSchema, { target: "openapi-3.0" });
 
   // Convert JSON Schema properties to Record<string, string> for x402
   // x402 expects simple string descriptions, not full JSON schema objects
@@ -34,7 +34,7 @@ export function inputSchemaToX402GET(
 export function inputSchemaToX402POST(
   inputSchema: z.ZodObject<z.ZodRawShape>,
 ): HTTPRequestStructure {
-  const jsonSchema = z.toJSONSchema(inputSchema, {target: "openapi-3.0"});
+  const jsonSchema = z.toJSONSchema(inputSchema, { target: "openapi-3.0" });
 
   return {
     type: "http" as const,
